@@ -1,24 +1,14 @@
 import { MongoClient } from "mongodb";
+import mongoose from "mongoose";
 
 async function connectDB(uri) {
-    const client = new MongoClient(uri);
-
-    try{
-        await client.connect();
-        await listDB(client);
-    } catch (e) {
-        console.error(e);
-    } finally {
-        await client.close();
-    }
-
+    mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('Connected to MongoDB Atlas');
+  })
+  .catch((err) => {
+    console.error('Error connecting to MongoDB Atlas:', err);
+  });
 }
 
-async function listDB(client){
-    const databaseList = await client.db().admin().listDatabases();
-    console.log("Databases List: ");
-    databaseList.databases.forEach(db => {
-        console.log(`-${db.name}`);
-    });
-} 
 export default connectDB;
