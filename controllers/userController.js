@@ -5,8 +5,24 @@ import transporter from "../config/emailConfig.js";
 
 export const userRegistration = async(req,res) => {
   const {userName,email,password,phoneNumber} = req.body;
+
+	// Regular expression to validate phone number and email
+  const phoneNumberPattern = /^[0-9]{10}$/;
+	const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+	
   if(userName && email && password && phoneNumber){
-    const user = await userModel.findOne({email:email});
+		if(!phoneNumberPattern.test(phoneNumber)){
+			res.status(406).send({
+				"Status":"Failed",
+				"Message":"Please enter a valid phone number..."
+			});
+		}else if(! emailPattern.test(email)){
+			res.status(406).send({
+				"Status":"Failed",
+				"Message":"Please enter a valid email address..."
+			});
+		}else {
+			const user = await userModel.findOne({email:email});
       if(user){
         res.status(409).send(
           {  
@@ -29,16 +45,11 @@ export const userRegistration = async(req,res) => {
 						);
 
 						await newUser.save();
-						const savedUser = await userModel.findOne({email:email});
-
-						// Generate JWT token
-						const token = jwt.sign({userID:savedUser._id},process.env.JWT_SECRET_KEY,{expiresIn:'24h'});
 
 						res.status(201).send(
 							{
 								"Status":"Success",
 								"Message":"User has been Registered successfully...",
-								"token":token
 							}
 						)
 					} catch(e) {
@@ -51,6 +62,8 @@ export const userRegistration = async(req,res) => {
 							);
 					}
       }
+		}
+    
   } else {
 			res.status(406).send(
 				{ 
