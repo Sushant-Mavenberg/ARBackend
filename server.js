@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import connectDB from "./config/connectDB.js";
 import userRoute from "./routes/userRoutes.js"
+import productRoute from "./routes/productRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -15,7 +16,8 @@ app.use(cors());
 app.use(express.json());
 
 // Loading Routes
-app.use("/api/user",userRoute);
+app.use("/api/users",userRoute);
+app.use("/api/products",productRoute);
 
 // MongoDB Connection
 const uri = process.env.DB_URI;

@@ -4,9 +4,8 @@ import userModel from "../models/User.js";
 export const checkUserAuth = async(req,res,next) => {
     let token;
 
-		// Getting token from header
+	// Getting token from header
     const {authorization} = req.headers;
-		console.log(typeof authorization)
     if (authorization && authorization.startsWith("Bearer")){
 			try{
 				token = authorization.split(" ")[1];
@@ -18,11 +17,11 @@ export const checkUserAuth = async(req,res,next) => {
 				req.user = await userModel.findOne({_id:userID}).select("-password");
 				next();
 			}catch (e){
-				console.log(e);
+				
 				res.status(401).send(
 					{
 						"Status":"Failed",
-						"Message":"Unauthorized User..."
+						"Message":e.message
 					}
 				);
 			}

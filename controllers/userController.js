@@ -53,11 +53,10 @@ export const userRegistration = async(req,res) => {
 							}
 						)
 					} catch(e) {
-							console.error(e);
 							res.status(500).send(
 								{
 									"Status":"Failed",
-									"Message":"Unable to Register..."
+									"Message":e.message
 								}
 							);
 					}
@@ -74,7 +73,7 @@ export const userRegistration = async(req,res) => {
 	}    
 }
 
-export const userLogin = async(req,res) => {
+export const userLoginViaPassword = async(req,res) => {
 	try {
 		const {email,password} = req.body;
 		if (email && password){
@@ -93,14 +92,14 @@ export const userLogin = async(req,res) => {
 							"Message":"You are logged in...",
 							"token":token
 						}
-					)
+					);
 				} else {
 					res.status(406).send(
 						{
 							"Status":"Failed",
 							"Message":"Incorrect Email or Password..."
 						}
-					)
+					);
 				}
 			} else {
 				res.status(404).send(
@@ -108,7 +107,7 @@ export const userLogin = async(req,res) => {
 						"Status":"Failed",
 						"Message":"You need to register before login..."
 					}
-				)
+				);
 			}
 		} else {
 			res.status(406).send(
@@ -119,11 +118,10 @@ export const userLogin = async(req,res) => {
 			);
 		}
 	} catch (e){
-		console.log(e);
 		res.status(500).send(
 			{ 
 				"Status":"Failed",
-				"Message":"Unable to login..."
+				"Message":e.message
 			}
 		);
 	}
@@ -138,18 +136,27 @@ export const changeUserPassword = async(req,res) => {
 					"Status":"Failed",
 					"Message":"Password and Confirm Password fields don't match..."
 				}
-			)
-		}else {
-			const salt = await bcrypt.genSalt(10);
-			const newHashedPassword = await bcrypt.hash(password,salt);
-			console.log(req.user);
-			await userModel.findByIdAndUpdate(req.user._id,{$set:{password:newHashedPassword}});
-			res.status(200).send(
-				{
-					"Status":"Success",
-					"Message":"Password Changed Successfully..."
-				}
 			);
+		}else {
+			try{
+				const salt = await bcrypt.genSalt(10);
+				const newHashedPassword = await bcrypt.hash(password,salt);
+				await userModel.findByIdAndUpdate(req.user._id,{$set:{password:newHashedPassword}});
+				res.status(200).send(
+					{
+						"Status":"Success",
+						"Message":"Password Changed Successfully..."
+					}
+				);
+			} catch(e) {
+				res.status(500).send(
+					{
+						"Status":"Failed",
+						"Message":e.message
+					}
+				);
+			}
+			
 		}
 	}else {
 		res.status(406).send(
@@ -167,33 +174,44 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 			const user = await userModel.findOne({email:email});
 			let secret;
 			if (user) {
-				secret = user._id + process.env.JWT_SECRET_KEY
-				const token = jwt.sign({userID:user._id},secret,{expiresIn:"15m"});
-				const link = `http://127.0.0.1:3000/api/user/reset-password/${user._id}/${token}`;
-				console.log(link);
+				try{
+					secret = user._id + process.env.JWT_SECRET_KEY
+					const token = jwt.sign({userID:user._id},secret,{expiresIn:"15m"});
+					const link = `http://127.0.0.1:3000/api/user/reset-password/${user._id}/${token}`;
+					console.log(link);
 
-				//Send Email
-				let info = await transporter.sendMail({
-					from:process.env.EMAIL_FROM,
-					to:user.email,
-					subject:"Arphibo - Password Reset Link",
-					html:`<a href=${link}>Click Here<a/> to reset your password.`
-				});
+					//Send Email
+					let info = await transporter.sendMail({
+						from:process.env.EMAIL_FROM,
+						to:user.email,
+						subject:"Arphibo - Password Reset Link",
+						html:`<a href=${link}>Click Here<a/> to reset your password.
+						<p>*This link will expire after 15 minutes!</p>`
+					});
 
-				res.status(200).send(
-					{
-						"Status":"Success",
-						"Message":"Password reset link has been sent to you via email...",
-						"Info":info
-					}
-				)
+					res.status(200).send(
+						{
+							"Status":"Success",
+							"Message":"Password reset link has been sent to you via email...",
+							"Info":info
+						}
+					);
+				} catch(e) {
+					res.status(500).send(
+						{
+							"Status":"Failed",
+							"Message":e.message
+						}
+					);
+				}
+				
 			}else {
 				res.status(404).send(
 					{
 						"Status":"Failed",
 						"Message":"Email doesn't exist..."
 					}
-				)
+				);
 			}
 		}else{
 			res.status(406).send(
@@ -201,7 +219,7 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 					"Status":"Failed",
 					"Message":"Email is required..."
 				}
-			)
+			);
 		}
 }
 
@@ -240,7 +258,12 @@ export const userPasswordReset = async(req,res) => {
 			);
 		}
 	} catch (e){
-		console.log(e);
+		res.status(500).send(
+			{
+				"Status":"Failed",
+				"Message":e.message
+			}
+		);
 	}
 }
 
