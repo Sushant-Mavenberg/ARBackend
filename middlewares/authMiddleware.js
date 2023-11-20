@@ -20,7 +20,7 @@ export const checkUserAuth = async(req,res,next) => {
 				
 				res.status(401).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":e.message
 					}
 				);
@@ -28,7 +28,7 @@ export const checkUserAuth = async(req,res,next) => {
     }else{
 			res.status(401).send(
 				{
-					"status":"failed",
+					"success":"false",
 					"message":"unauthorized user, no token..."
 				}
 			);

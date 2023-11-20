@@ -19,12 +19,12 @@ export const userRegistration = async(req,res) => {
   if(userName && email && password && phoneNumber){
 		if(!phoneNumberPattern.test(phoneNumber)){
 			res.status(406).send({
-				"status":"failed",
+				"success":"false",
 				"message":"please enter a valid phone number with country code..."
 			});
 		}else if(! emailPattern.test(email)){
 			res.status(406).send({
-				"status":"failed",
+				"success":"false",
 				"message":"please enter a valid email address..."
 			});
 		}else {
@@ -33,14 +33,14 @@ export const userRegistration = async(req,res) => {
       if(user1){
         res.status(409).send(
           {  
-						"status":"failed",
+						"success":"false",
             "message":"email already exists..."
           }
 				);
       }else if(user2){
 				res.status(409).send(
           {  
-						"status":"failed",
+						"success":"false",
             "message":"phoneNumber already exists..."
           }
 				);
@@ -62,14 +62,14 @@ export const userRegistration = async(req,res) => {
 
 						res.status(201).send(
 							{
-								"status":"success",
+								"success":"true",
 								"message":"user has been Registered successfully...",
 							}
 						)
 					} catch(e) {
 							res.status(500).send(
 								{
-									"status":"failed",
+									"success":"false",
 									"message":e.message
 								}
 							);
@@ -80,7 +80,7 @@ export const userRegistration = async(req,res) => {
   } else {
 			res.status(406).send(
 				{ 
-					"status":"failed",
+					"success":"false",
           "message":"all fields are required..."
 				}
 			);
@@ -135,14 +135,14 @@ export const sendOtp = async(req,res) => {
 				});
 				res.status(200).send(
 					{
-						"status":"success",
+						"success":"true",
 						"message":"otp has been sent to you via email..."
 					}
 				);
 			} catch (e) {
 				res.status(500).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":e.message
 					}
 				);
@@ -151,7 +151,7 @@ export const sendOtp = async(req,res) => {
 		} else{
 			res.status(404).send(
 				{ 
-					"status":"failed",
+					"success":"false",
 					"message":"email doesn't exist..."
 				}
 			);
@@ -172,14 +172,14 @@ export const sendOtp = async(req,res) => {
 
 				res.status(200).send(
 					{
-						"status":"success",
+						"success":"true",
 						"message":"otp has been sent to you via sms..."
 					}
 				);
 			} catch (e) {
 				res.status(500).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":e.message
 					}
 				);
@@ -188,7 +188,7 @@ export const sendOtp = async(req,res) => {
 		} else{
 			res.status(404).send(
 				{ 
-					"status":"failed",
+					"success":"false",
 					"message":"phoneNumber doesn't exist..."
 				}
 			);
@@ -197,7 +197,7 @@ export const sendOtp = async(req,res) => {
 	} else {
 		res.status(406).send(
 			{ 
-				"status":"failed",
+				"success":"false",
 				"message":"please provide valid email or phone number to recieve an OTP...a phone number should have a country code..."
 			}
 		);
@@ -223,7 +223,7 @@ export const userLoginViaOtp = async(req,res) => {
 	}else {
 		res.status(406).send(
 			{
-				"status":"failed",
+				"success":"false",
 				"message":"please provide email and otp or phoneNumber and otp..."
 			}
 		);
@@ -237,7 +237,7 @@ export const userLoginViaOtp = async(req,res) => {
 				const token = jwt.sign({userID:user._id},process.env.JWT_SECRET_KEY,{expiresIn:'240h'});
 				res.status(200).send(
 					{
-						"status":"success",
+						"success":"true",
 						"message":"you are logged in...",
 						"token":token
 					}
@@ -245,7 +245,7 @@ export const userLoginViaOtp = async(req,res) => {
 			} else {
 				res.status(406).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":"incorrect otp..."
 					}
 				);
@@ -253,7 +253,7 @@ export const userLoginViaOtp = async(req,res) => {
 		} else {
 			res.status(406).send(
 				{
-					"status":"failed",
+					"success":"false",
 					"message":"invalid otp..."
 				}
 			);
@@ -262,7 +262,7 @@ export const userLoginViaOtp = async(req,res) => {
 	} catch (e) {
 		res.status(500).send(
 			{
-				"status" : "failed",
+				"success" : "false",
 				"message" : e.message
 			}
 		);
@@ -284,7 +284,7 @@ export const userLoginViaPassword = async(req,res) => {
 
 					res.status(200).send(
 						{
-							"status":"success",
+							"success":"true",
 							"message":"you are logged in...",
 							"token":token
 						}
@@ -292,7 +292,7 @@ export const userLoginViaPassword = async(req,res) => {
 				} else {
 					res.status(406).send(
 						{
-							"status":"failed",
+							"success":"false",
 							"message":"incorrect Email or Password..."
 						}
 					);
@@ -300,7 +300,7 @@ export const userLoginViaPassword = async(req,res) => {
 			} else {
 				res.status(404).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":"you need to register before login..."
 					}
 				);
@@ -308,7 +308,7 @@ export const userLoginViaPassword = async(req,res) => {
 		} else {
 			res.status(406).send(
 				{ 
-					"status":"failed",
+					"success":"false",
           "message":"all fields are required..."
 				}
 			);
@@ -316,7 +316,7 @@ export const userLoginViaPassword = async(req,res) => {
 	} catch (e){
 		res.status(500).send(
 			{ 
-				"status":"failed",
+				"success":"false",
 				"message":e.message
 			}
 		);
@@ -329,7 +329,7 @@ export const changeUserPassword = async(req,res) => {
 		if (password !== confirmPassword) {
 			res.status(409).send(
 				{
-					"status":"failed",
+					"success":"false",
 					"message":"password and confirmPassword fields don't match..."
 				}
 			);
@@ -340,14 +340,14 @@ export const changeUserPassword = async(req,res) => {
 				await userModel.findByIdAndUpdate(req.user._id,{$set:{password:newHashedPassword}});
 				res.status(200).send(
 					{
-						"status":"success",
+						"success":"true",
 						"message":"password changed successfully..."
 					}
 				);
 			} catch(e) {
 				res.status(500).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":e.message
 					}
 				);
@@ -357,7 +357,7 @@ export const changeUserPassword = async(req,res) => {
 	}else {
 		res.status(406).send(
 			{
-				"status":"failed",
+				"success":"false",
 				"message":"all fields are required..."
 			}
 		);
@@ -377,7 +377,7 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 					console.log(link);
 
 					//Send Email
-					let info = await transporter.sendMail({
+					transporter.sendMail({
 						from:process.env.EMAIL_FROM,
 						to:user.email,
 						subject:"Arphibo - Password Reset Link",
@@ -387,15 +387,14 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 
 					res.status(200).send(
 						{
-							"status":"success",
-							"message":"password reset link has been sent to you via email...",
-							"Info":info
+							"success":"true",
+							"message":"password reset link has been sent to you via email..."
 						}
 					);
 				} catch(e) {
 					res.status(500).send(
 						{
-							"status":"failed",
+							"success":"false",
 							"message":e.message
 						}
 					);
@@ -404,7 +403,7 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 			}else {
 				res.status(404).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":"email doesn't exist..."
 					}
 				);
@@ -412,7 +411,7 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 		}else{
 			res.status(406).send(
 				{
-					"status":"failed",
+					"success":"false",
 					"message":"email is required..."
 				}
 			);
@@ -433,14 +432,14 @@ export const userPasswordReset = async(req,res) => {
 				await userModel.findByIdAndUpdate(user._id,{$set:{password:newHashedPassword}});
 				res.status(200).send(
 					{
-						"status":"success",
+						"success":"true",
 						"message":"password reset complete..."
 					}
 				);
 			}else {
 				res.status(406).send(
 					{
-						"status":"failed",
+						"success":"false",
 						"message":"Password and confirmPassword fields don't match..."
 					}
 				);
@@ -448,7 +447,7 @@ export const userPasswordReset = async(req,res) => {
 		}else {
 			res.status(406).send(
 				{
-					"status":"failed",
+					"success":"false",
 					"message":"Aal fields are required..."
 				}
 			);
@@ -456,7 +455,7 @@ export const userPasswordReset = async(req,res) => {
 	} catch (e){
 		res.status(500).send(
 			{
-				"status":"failed",
+				"success":"false",
 				"message":e.message
 			}
 		);
@@ -469,7 +468,7 @@ export const userLogout = async(req,res) => {
   const token = jwt.sign({userID:user._id},process.env.JWT_SECRET_KEY,{expiresIn:"1s"});
 	res.status(200).send(
 		{
-			"status":"success",
+			"success":"true",
 			"message":"you have been successfully logged out...please use this new token for any subsequent requests...",
 			"Token" : token
 		}
