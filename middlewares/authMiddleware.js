@@ -20,16 +20,16 @@ export const checkUserAuth = async(req,res,next) => {
 				
 				res.status(401).send(
 					{
-						"Status":"Failed",
-						"Message":e.message
+						"status":"failed",
+						"message":e.message
 					}
 				);
 			}
     }else{
 			res.status(401).send(
 				{
-					"Status":"Failed",
-					"Message":"Unauthorized user, No token..."
+					"status":"failed",
+					"message":"unauthorized user, no token..."
 				}
 			);
     }

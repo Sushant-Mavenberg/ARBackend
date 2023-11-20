@@ -1,36 +1,50 @@
 import userModel from "../models/User.js";
+import { redisClient } from "../config/redisConfig.js";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv";
 import jwt  from "jsonwebtoken";
+import otplib from 'otplib';
 import transporter from "../config/emailConfig.js";
+import sendSMS from "../config/smsConfig.js";
+
+dotenv.config();
 
 export const userRegistration = async(req,res) => {
   const {userName,email,password,phoneNumber} = req.body;
 
 	// Regular expression to validate phone number and email
-  const phoneNumberPattern = /^[0-9]{10}$/;
+  const phoneNumberPattern = /^(\+91-?)?[0-9]{10}$/;
 	const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 	
   if(userName && email && password && phoneNumber){
 		if(!phoneNumberPattern.test(phoneNumber)){
 			res.status(406).send({
-				"Status":"Failed",
-				"Message":"Please enter a valid phone number..."
+				"status":"failed",
+				"message":"please enter a valid phone number..."
 			});
 		}else if(! emailPattern.test(email)){
 			res.status(406).send({
-				"Status":"Failed",
-				"Message":"Please enter a valid email address..."
+				"status":"failed",
+				"message":"please enter a valid email address..."
 			});
 		}else {
-			const user = await userModel.findOne({email:email});
-      if(user){
+			const user1 = await userModel.findOne({email:email});
+			const user2 = await userModel.findOne({phoneNumber:phoneNumber});
+      if(user1){
         res.status(409).send(
           {  
-						"Status":"Failed",
-            "Message":"Email already exists..."
+						"status":"failed",
+            "message":"email already exists..."
           }
 				);
-      } else {
+      }else if(user2){
+				res.status(409).send(
+          {  
+						"status":"failed",
+            "message":"phoneNumber already exists..."
+          }
+				);
+			} else {
 					try {
 						const salt = await bcrypt.genSalt(10);
 						const hashedPassword = await bcrypt.hash(password,salt);
@@ -48,15 +62,15 @@ export const userRegistration = async(req,res) => {
 
 						res.status(201).send(
 							{
-								"Status":"Success",
-								"Message":"User has been Registered successfully...",
+								"status":"success",
+								"message":"user has been Registered successfully...",
 							}
 						)
 					} catch(e) {
 							res.status(500).send(
 								{
-									"Status":"Failed",
-									"Message":e.message
+									"status":"failed",
+									"message":e.message
 								}
 							);
 					}
@@ -66,11 +80,173 @@ export const userRegistration = async(req,res) => {
   } else {
 			res.status(406).send(
 				{ 
-					"Status":"Failed",
-          "Message":"All fields are required..."
+					"status":"failed",
+          "message":"all fields are required..."
 				}
 			);
 	}    
+}
+
+export const sendOtp = async(req,res) => {
+	const {email,phoneNumber} = req.body;
+
+	const secretKey = process.env.OTP_SECRET_KEY;
+
+	// Configure the OTP length to 4 digits
+	otplib.authenticator.options = {
+ 		digits: 4,
+	};
+
+	// Generate TOTP
+	function generateOTP() {
+  	const otp = otplib.authenticator.generate(secretKey);
+  	return otp;
+	}
+
+	if (email){
+		const user = await userModel.findOne({email:email});
+		if (user){
+			const otp = generateOTP();
+
+			try {
+				await redisClient.set(user.id,otp);
+				redisClient.expire(user.id,330);
+
+				//Send Email
+				let info = await transporter.sendMail({
+					from:process.env.EMAIL_FROM,
+					to:user.email,
+					subject:"Arphibo - Login OTP",
+					html:`<p>The OTP for login is <strong>${otp}</strong>.</p>
+					<p>*This OTP will expire after 5 minutes!!!</p>`
+				});
+				res.status(200).send(
+					{
+						"status":"success",
+						"message":"otp has been sent to you via email...",
+						"Info": info
+					}
+				);
+			} catch (e) {
+				res.status(500).send(
+					{
+						"status":"failed",
+						"message":e.message
+					}
+				);
+			}
+
+		} else{
+			res.status(404).send(
+				{ 
+					"status":"failed",
+					"message":"email doesn't exist..."
+				}
+			);
+		}
+	} else if (phoneNumber) {
+		const user = await userModel.findOne({phoneNumber:phoneNumber});
+		if (user){
+			const otp = generateOTP();
+
+			try {
+				await redisClient.set(user.id,otp);
+				redisClient.expire(user.id,330);
+
+				//Send SMS
+				const to = user.phoneNumber;
+				const body = `${otp} This is the OTP to log in to your Arphibo app...`
+				sendSMS(to,body);
+
+				res.status(200).send(
+					{
+						"status":"success",
+						"message":"otp has been sent to you via sms..."
+					}
+				);
+			} catch (e) {
+				res.status(500).send(
+					{
+						"status":"failed",
+						"message":e.message
+					}
+				);
+			}
+
+		} else{
+			res.status(404).send(
+				{ 
+					"status":"failed",
+					"message":"phoneNumber doesn't exist..."
+				}
+			);
+		}
+
+	} else {
+		res.status(406).send(
+			{ 
+				"status":"failed",
+				"message":"please provide email or phoneNumber to recieve an OTP..."
+			}
+		);
+	}
+}
+
+export const userLoginViaOtp = async(req,res) => {
+	const {email,phoneNumber,otp} = req.body;
+
+	let user;
+	if (email && otp){
+		user = await userModel.findOne({email:email});
+	}else if (phoneNumber && otp){
+		user = await userModel.findOne({phoneNumber:phoneNumber});
+	}else {
+		res.status(406).send(
+			{
+				"status":"failed",
+				"message":"please provide email and otp or phoneNumber and otp..."
+			}
+		);
+	}
+	
+	try {
+		const generatedOtp = await redisClient.get(user.id);
+		if(generatedOtp){
+			if (generatedOtp === otp) {
+				// Generate JWT token which will expire after 10 days.
+				const token = jwt.sign({userID:user._id},process.env.JWT_SECRET_KEY,{expiresIn:'240h'});
+				res.status(200).send(
+					{
+						"status":"success",
+						"message":"you are logged in...",
+						"token":token
+					}
+				);
+			} else {
+				res.status(406).send(
+					{
+						"status":"failed",
+						"message":"incorrect otp..."
+					}
+				);
+			}
+		} else {
+			res.status(406).send(
+				{
+					"status":"failed",
+					"message":"invalid otp..."
+				}
+			);
+		}
+		
+	} catch (e) {
+		res.status(500).send(
+			{
+				"status" : "failed",
+				"message" : e.message
+			}
+		);
+	}
 }
 
 export const userLoginViaPassword = async(req,res) => {
@@ -88,40 +264,40 @@ export const userLoginViaPassword = async(req,res) => {
 
 					res.status(200).send(
 						{
-							"Status":"Success",
-							"Message":"You are logged in...",
+							"status":"success",
+							"message":"you are logged in...",
 							"token":token
 						}
 					);
 				} else {
 					res.status(406).send(
 						{
-							"Status":"Failed",
-							"Message":"Incorrect Email or Password..."
+							"status":"failed",
+							"message":"incorrect Email or Password..."
 						}
 					);
 				}
 			} else {
 				res.status(404).send(
 					{
-						"Status":"Failed",
-						"Message":"You need to register before login..."
+						"status":"failed",
+						"message":"you need to register before login..."
 					}
 				);
 			}
 		} else {
 			res.status(406).send(
 				{ 
-					"Status":"Failed",
-          "Message":"All fields are required..."
+					"status":"failed",
+          "message":"all fields are required..."
 				}
 			);
 		}
 	} catch (e){
 		res.status(500).send(
 			{ 
-				"Status":"Failed",
-				"Message":e.message
+				"status":"failed",
+				"message":e.message
 			}
 		);
 	}
@@ -133,8 +309,8 @@ export const changeUserPassword = async(req,res) => {
 		if (password !== confirmPassword) {
 			res.status(409).send(
 				{
-					"Status":"Failed",
-					"Message":"Password and Confirm Password fields don't match..."
+					"status":"failed",
+					"message":"password and confirmPassword fields don't match..."
 				}
 			);
 		}else {
@@ -144,15 +320,15 @@ export const changeUserPassword = async(req,res) => {
 				await userModel.findByIdAndUpdate(req.user._id,{$set:{password:newHashedPassword}});
 				res.status(200).send(
 					{
-						"Status":"Success",
-						"Message":"Password Changed Successfully..."
+						"status":"success",
+						"message":"password changed successfully..."
 					}
 				);
 			} catch(e) {
 				res.status(500).send(
 					{
-						"Status":"Failed",
-						"Message":e.message
+						"status":"failed",
+						"message":e.message
 					}
 				);
 			}
@@ -161,8 +337,8 @@ export const changeUserPassword = async(req,res) => {
 	}else {
 		res.status(406).send(
 			{
-				"Status":"Failed",
-				"Message":"All Fields are required..."
+				"status":"failed",
+				"message":"all fields are required..."
 			}
 		);
 	}
@@ -191,16 +367,16 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 
 					res.status(200).send(
 						{
-							"Status":"Success",
-							"Message":"Password reset link has been sent to you via email...",
+							"status":"success",
+							"message":"password reset link has been sent to you via email...",
 							"Info":info
 						}
 					);
 				} catch(e) {
 					res.status(500).send(
 						{
-							"Status":"Failed",
-							"Message":e.message
+							"status":"failed",
+							"message":e.message
 						}
 					);
 				}
@@ -208,16 +384,16 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 			}else {
 				res.status(404).send(
 					{
-						"Status":"Failed",
-						"Message":"Email doesn't exist..."
+						"status":"failed",
+						"message":"email doesn't exist..."
 					}
 				);
 			}
 		}else{
 			res.status(406).send(
 				{
-					"Status":"Failed",
-					"Message":"Email is required..."
+					"status":"failed",
+					"message":"email is required..."
 				}
 			);
 		}
@@ -237,34 +413,47 @@ export const userPasswordReset = async(req,res) => {
 				await userModel.findByIdAndUpdate(user._id,{$set:{password:newHashedPassword}});
 				res.status(200).send(
 					{
-						"Status":"Success",
-						"Message":"Password reset complete..."
+						"status":"success",
+						"message":"password reset complete..."
 					}
 				);
 			}else {
 				res.status(406).send(
 					{
-						"Status":"Failed",
-						"Message":"Password and Confirm Password fields don't match..."
+						"status":"failed",
+						"message":"Password and confirmPassword fields don't match..."
 					}
 				);
 			}
 		}else {
 			res.status(406).send(
 				{
-					"Status":"Failed",
-					"Message":"All Fields are required..."
+					"status":"failed",
+					"message":"Aal fields are required..."
 				}
 			);
 		}
 	} catch (e){
 		res.status(500).send(
 			{
-				"Status":"Failed",
-				"Message":e.message
+				"status":"failed",
+				"message":e.message
 			}
 		);
 	}
+}
+
+export const userLogout = async(req,res) => {
+	const user = req.user;
+	// Issue a new token with a very short expiration time
+  const token = jwt.sign({userID:user._id},process.env.JWT_SECRET_KEY,{expiresIn:"1s"});
+	res.status(200).send(
+		{
+			"status":"success",
+			"message":"you have been successfully logged out...please use this new token for any subsequent requests...",
+			"Token" : token
+		}
+	);
 }
 
 // Default export (you can have one default export per module)

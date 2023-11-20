@@ -4,14 +4,14 @@ export const fetchAllProducts = async(req,res) => {
 	try {
     const products = await productModel.find({});
     res.status(200).send({
-			"Status":"Success",
-			"Message":"All products are fetched successfully...",
-			"Products": products
+			"status":"success",
+			"message":"all products are fetched successfully...",
+			"products": products
 		});
   } catch (e) {
     res.status(500).send({
-			"Status":"Failed",
-			"Message":e.message
+			"status":"failed",
+			"message":e.message
 		});
   }
 }
@@ -24,23 +24,23 @@ export const uploadProduct = async(req,res) => {
 				const product = await productModel.findOne({sku:sku});
 				if(product) {
 					res.status(409).send({
-						"Status":"Failed",
-						"Message":"SKU already exists..."
+						"status":"failed",
+						"message":"sku already exists..."
 					});
 				} else {
 					try{
 						const newProduct = new productModel(req.body);
 						await newProduct.save();
 						res.status(201).send({
-							"Status":"Success",
-							"Message":"Product has been uploaded successfully...",
+							"status":"success",
+							"message":"product has been uploaded successfully...",
 							"Product": newProduct
 						});
 					} catch(e) {
 						res.status(500).send(
 							{
-								"Status":"Failed",
-								"Message":e.message
+								"status":"failed",
+								"message":e.message
 							}
 						);
 					}
@@ -48,14 +48,14 @@ export const uploadProduct = async(req,res) => {
 				
 			} else {
 				res.status(406).send({
-					"Status":"Failed",
-					"Message":"Fields Name,Price,Category,SKU are required..."
+					"status":"failed",
+					"message":"fields name,price,category,sku are required..."
 				});
 			}
     } else {
         res.status(401).send({
-          "Status":"Failed",
-          "Message":"Unauthorized User..."
+          "status":"failed",
+          "message":"unauthorized user..."
         });
     }
 }
