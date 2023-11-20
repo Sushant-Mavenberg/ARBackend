@@ -13,14 +13,14 @@ export const userRegistration = async(req,res) => {
   const {userName,email,password,phoneNumber} = req.body;
 
 	// Regular expression to validate phone number and email
-  const phoneNumberPattern = /^(\+91-?)?[0-9]{10}$/;
+  const phoneNumberPattern = /^(\+91)[0-9]{10}$/;
 	const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 	
   if(userName && email && password && phoneNumber){
 		if(!phoneNumberPattern.test(phoneNumber)){
 			res.status(406).send({
 				"status":"failed",
-				"message":"please enter a valid phone number..."
+				"message":"please enter a valid phone number with country code..."
 			});
 		}else if(! emailPattern.test(email)){
 			res.status(406).send({
@@ -88,7 +88,20 @@ export const userRegistration = async(req,res) => {
 }
 
 export const sendOtp = async(req,res) => {
-	const {email,phoneNumber} = req.body;
+	const {userInput} = req.body;
+	let email;
+	let phoneNumber;
+
+	// Regular expression to validate phone number and email
+  const phoneNumberPattern = /^(\+91)[0-9]{10}$/
+;
+	const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+	
+	if (phoneNumberPattern.test(userInput)){
+		phoneNumber = userInput;
+	} else if (emailPattern.test(userInput)){
+		email = userInput;
+	}
 
 	const secretKey = process.env.OTP_SECRET_KEY;
 
@@ -109,11 +122,11 @@ export const sendOtp = async(req,res) => {
 			const otp = generateOTP();
 
 			try {
-				await redisClient.set(user.id,otp);
-				redisClient.expire(user.id,330);
+				await redisClient.set(user.email,otp);
+				redisClient.expire(user.email,330);
 
 				//Send Email
-				let info = await transporter.sendMail({
+				transporter.sendMail({
 					from:process.env.EMAIL_FROM,
 					to:user.email,
 					subject:"Arphibo - Login OTP",
@@ -123,8 +136,7 @@ export const sendOtp = async(req,res) => {
 				res.status(200).send(
 					{
 						"status":"success",
-						"message":"otp has been sent to you via email...",
-						"Info": info
+						"message":"otp has been sent to you via email..."
 					}
 				);
 			} catch (e) {
@@ -150,8 +162,8 @@ export const sendOtp = async(req,res) => {
 			const otp = generateOTP();
 
 			try {
-				await redisClient.set(user.id,otp);
-				redisClient.expire(user.id,330);
+				await redisClient.set(user.phoneNumber,otp);
+				redisClient.expire(user.phoneNumber,330);
 
 				//Send SMS
 				const to = user.phoneNumber;
@@ -186,7 +198,7 @@ export const sendOtp = async(req,res) => {
 		res.status(406).send(
 			{ 
 				"status":"failed",
-				"message":"please provide email or phoneNumber to recieve an OTP..."
+				"message":"please provide valid email or phone number to recieve an OTP...a phone number should have a country code..."
 			}
 		);
 	}
@@ -196,10 +208,18 @@ export const userLoginViaOtp = async(req,res) => {
 	const {email,phoneNumber,otp} = req.body;
 
 	let user;
+	let key;
 	if (email && otp){
 		user = await userModel.findOne({email:email});
+		if (user){
+			key = user.email;
+		}
+		
 	}else if (phoneNumber && otp){
 		user = await userModel.findOne({phoneNumber:phoneNumber});
+		if (user){
+			key = user.phoneNumber;
+		}
 	}else {
 		res.status(406).send(
 			{
@@ -210,7 +230,7 @@ export const userLoginViaOtp = async(req,res) => {
 	}
 	
 	try {
-		const generatedOtp = await redisClient.get(user.id);
+		const generatedOtp = await redisClient.get(key);
 		if(generatedOtp){
 			if (generatedOtp === otp) {
 				// Generate JWT token which will expire after 10 days.
