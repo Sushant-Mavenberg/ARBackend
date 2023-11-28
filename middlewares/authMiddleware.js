@@ -15,9 +15,14 @@ export const checkUserAuth = async(req,res,next) => {
 
 				// Get user from token
 				req.user = await userModel.findOne({_id:userID}).select("-password");
+				if(!userID){
+					return res.status(404).send({
+						"success":"false",
+						"message":"user doesn't exist..."
+					});
+				}
 				next();
 			}catch (e){
-				
 				res.status(401).send(
 					{
 						"success":"false",

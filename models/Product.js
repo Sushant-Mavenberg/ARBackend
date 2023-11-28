@@ -8,7 +8,7 @@ const productSchema = new mongoose.Schema({
 	},
 	category:{
 		type: String,
-		enum: ['table top', 'floor standing','wall hanging','metal planter','aroma candle'],
+		enum: ['table-top', 'floor-standing','wall-hanging','metal-planter','aroma-candle'],
 		required: true
 	},
 	sku: { 
@@ -70,6 +70,7 @@ const productSchema = new mongoose.Schema({
     volume: { type: String },
     depth: { type: String },
   },
+	hsn: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: null },
 });

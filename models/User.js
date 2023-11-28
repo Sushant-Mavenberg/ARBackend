@@ -15,18 +15,21 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
   billingAddress: [{
+    houseNo:String,
     street: String,
     city: String,
     state: String,
     postalCode: String,
-    country: String,
+    country: String
   }],
   shippingAddress: [{
+    houseNo:String,
     street: String,
     city: String,
     state: String,
     postalCode: String,
     country: String,
+    landmark:String
   }],
   phoneNumber: String,
   accountStatus: {
@@ -36,7 +39,7 @@ const userSchema = new mongoose.Schema({
   },
   userRole: {
     type: String,
-    enum: ['customer', 'seller', 'admin'],
+    enum: ['customer', 'admin','super-admin'],
     default: 'customer',
   },
   profilePicture: String,

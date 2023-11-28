@@ -11,23 +11,8 @@ dotenv.config();
 
 export const userRegistration = async(req,res) => {
   const {userName,email,password,phoneNumber} = req.body;
-
-	// Regular expression to validate phone number and email
-  const phoneNumberPattern = /^(\+91)[0-9]{10}$/;
-	const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 	
   if(userName && email && password && phoneNumber){
-		if(!phoneNumberPattern.test(phoneNumber)){
-			res.status(406).send({
-				"success":"false",
-				"message":"please enter a valid phone number with country code..."
-			});
-		}else if(! emailPattern.test(email)){
-			res.status(406).send({
-				"success":"false",
-				"message":"please enter a valid email address..."
-			});
-		}else {
 			const user1 = await userModel.findOne({email:email});
 			const user2 = await userModel.findOne({phoneNumber:phoneNumber});
       if(user1){
@@ -75,8 +60,6 @@ export const userRegistration = async(req,res) => {
 							);
 					}
       }
-		}
-    
   } else {
 			res.status(406).send(
 				{ 
@@ -93,8 +76,7 @@ export const sendOtp = async(req,res) => {
 	let phoneNumber;
 
 	// Regular expression to validate phone number and email
-  const phoneNumberPattern = /^(\+91)[0-9]{10}$/
-;
+  const phoneNumberPattern = /^(\+91)[0-9]{10}$/;
 	const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 	
 	if (phoneNumberPattern.test(userInput)){
