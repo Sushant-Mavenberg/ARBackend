@@ -1,3 +1,4 @@
+import { json } from "express";
 import productModel from "../models/Product.js";
 import {BlobServiceClient} from "@azure/storage-blob";
 
@@ -16,7 +17,7 @@ export const fetchAllProducts = async(req,res) => {
 		}
     res.status(200).send({
 			"success":"true",
-			"message":"all products are fetched successfully...",
+			"message":"All products are fetched",
 			"products": products
 		});
   } catch (e) {
@@ -30,15 +31,14 @@ export const fetchAllProducts = async(req,res) => {
 export const uploadProduct = async(req,res) => {
     const userRole = req.user.userRole;
     if (userRole === 'admin' || userRole === 'super-admin') {
-			const {name, price,category,sku,quantity,description} = req.body;
+			const {name, actualPrice,category,sku,quantity,description} = req.body;
 			const jpegImages = req.files['jpegImages'];
-	
-			if (name && price && category && sku && quantity && description && jpegImages) {
+			if (name && actualPrice && category && sku && quantity && description && jpegImages) {
 				const product = await productModel.findOne({sku:sku});
 				if(product) {
-					res.status(409).send({
+					res.status(409).send({ 
 						"success":"false",
-						"message":"sku already exists..."
+						"message":"SKU already exists"
 					});
 				} else {
 					try{
@@ -71,23 +71,48 @@ export const uploadProduct = async(req,res) => {
 								glbUrl = imageUrl;
 						}
 
+						let ar = false;
+						if (glbUrl){
+							ar = true;
+						}
+
+						// Calculating finalPrice based on discountPercentage
+						let discountPercentage;
+						let {finalPrice} = req.body;
+						if (finalPrice) {
+							discountPercentage = Math.floor(100-((finalPrice/actualPrice) * 100));
+						}else {
+							finalPrice = actualPrice;
+						}
+
+						// process itemDimensions,features from req body
+						const requirements = JSON.parse(req.body.requirements);
+						const itemDimensions = JSON.parse(req.body.itemDimensions);
+						const features = JSON.parse(req.body.features);
+						
 						// Create a new product with the received data and the Azure Blob Storage URLs
 						const productData = {
 							...req.body,
+							discountPercentage:discountPercentage,
+							ar:ar,
+							requirements:requirements,
+							itemDimensions:itemDimensions,
+							features:features,
 							images: {
 								jpegUrls: jpegUrls,
 								glbUrl: glbUrl,
-							},
+							}
 						};
 
 						const newProduct = new productModel(productData);
 						const savedProduct = await newProduct.save();
 						res.status(201).send({
 							"success":"true",
-							"message":"product has been uploaded successfully...",
+							"message":"Product uploaded",
 							"product": savedProduct
 						});
 					} catch(e) {
+						console.log(e);
 						res.status(500).send(
 							{
 								"success":"false",
@@ -100,13 +125,13 @@ export const uploadProduct = async(req,res) => {
 			} else {
 				res.status(406).send({
 					"success":"false",
-					"message":"name,price,category,sku, quantity,description and jpegImages these fields are required..."
+					"message":"name,price,category,sku, quantity,description and jpegImages these fields are required"
 				});
 			}
     } else {
         res.status(401).send({
           "success":"false",
-          "message":"unauthorized user..."
+          "message":"Unauthorized User"
         });
     }
 }
@@ -119,13 +144,13 @@ export const fetchProduct = async(req,res) => {
 		if(product) {
 			res.status(200).send({
 				"success":"true",
-				"message":"product fetched successfully...",
+				"message":"Product fetched successfully",
 				"product":product
 			});
 		} else {
 			res.status(404).send({
 				"success":"false",
-				"message":`product with id ${productId} doesn't exist...`
+				"message":`Product not found`
 			});
 		}
 	} catch (e) {
@@ -140,22 +165,23 @@ export const updateProduct = async(req,res) => {
 	const userRole = req.user.userRole;
     if (userRole === 'admin' || userRole === 'super-admin') {
 			try {
+				let updateFields = req.body;
 				const productId = req.params.id;
 				const updatedProduct = await productModel.findByIdAndUpdate(
 					productId,
-					{ $set: req.body },
+					{ $set: updateFields },
 					{ new: true, runValidators: true }
 				);
 				if (updatedProduct){
 					res.status(200).send({
 						"success":"true",
-						"message":"product updated successfully...",
+						"message":"Product updated",
 						"updatedProduct":updatedProduct
 					});
-				} else {
+				} else { 
 					res.status(404).send({
 						"success":"false",
-						"message":`product with id ${productId} doesn't exist...`
+						"message":`Productnot found`
 					})
 				}
 			} catch (e) {
@@ -167,7 +193,7 @@ export const updateProduct = async(req,res) => {
 		} else {
 			res.status(401).send({
 				"success":"false",
-				"message":"unauthorized user..."
+				"message":"Unauthorized User"
 			});
 		}
 }

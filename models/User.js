@@ -14,23 +14,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  billingAddress: [{
-    houseNo:String,
-    street: String,
-    city: String,
-    state: String,
-    postalCode: String,
-    country: String
-  }],
-  shippingAddress: [{
-    houseNo:String,
-    street: String,
-    city: String,
-    state: String,
-    postalCode: String,
-    country: String,
-    landmark:String
-  }],
   phoneNumber: String,
   accountStatus: {
     type: String,
