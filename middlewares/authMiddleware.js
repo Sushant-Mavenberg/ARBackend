@@ -18,7 +18,7 @@ export const checkUserAuth = async(req,res,next) => {
 				if(!userID){
 					return res.status(404).send({
 						"success":"false",
-						"message":"user doesn't exist..."
+						"message":"User not found"
 					});
 				}
 				next();
@@ -34,7 +34,7 @@ export const checkUserAuth = async(req,res,next) => {
 			res.status(401).send(
 				{
 					"success":"false",
-					"message":"unauthorized user, no token..."
+					"message":"Unauthorized user, No token"
 				}
 			);
     }

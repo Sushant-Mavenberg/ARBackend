@@ -6,6 +6,7 @@ import userRoute from "./routes/userRoutes.js"
 import productRoute from "./routes/productRoutes.js";
 import cartRoute from "./routes/cartRoutes.js";
 import favoriteRoute from "./routes/favoriteRoutes.js";
+import orderRoute from "./routes/orderRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -22,6 +23,7 @@ app.use("/api/users",userRoute);
 app.use("/api/products",productRoute);
 app.use("/api/carts",cartRoute);
 app.use("/api/favorites",favoriteRoute);
+app.use("/api/orders",orderRoute);
 
 // MongoDB Connection
 const uri = process.env.DB_URI;

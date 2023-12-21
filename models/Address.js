@@ -13,7 +13,10 @@ const addressSchema = new mongoose.Schema({
   city: String,
   state: String,
   postalCode: String,
-  country: String,
+  country: {
+    type:String,
+    default:"India"
+  },
   landmark:String,
   phoneNumber:String,
   default: {

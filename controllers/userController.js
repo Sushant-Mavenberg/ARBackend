@@ -29,14 +29,14 @@ export const userRegistration = async(req,res) => {
         res.status(409).send(
           {  
 						"success":"false",
-            "message":"email already exists..."
+            "message":"Email already exists"
           }
 				);
       }else if(user2){
 				res.status(409).send(
           {  
 						"success":"false",
-            "message":"phoneNumber already exists..."
+            "message":"Phone Number already exists"
           }
 				);
 			} else {
@@ -58,14 +58,14 @@ export const userRegistration = async(req,res) => {
 						res.status(201).send(
 							{
 								"success":"true",
-								"message":"user has been Registered successfully...",
+								"message":"User Registered",
 							}
 						)
 					} catch(e) {
 							res.status(500).send(
 								{
 									"success":"false",
-									"message":e.message
+									"message":"Something went wrong"
 								}
 							);
 					}
@@ -74,7 +74,7 @@ export const userRegistration = async(req,res) => {
 			res.status(406).send(
 				{ 
 					"success":"false",
-          "message":"all fields are required..."
+          "message":"userName, password, email, phoneNumber is required to register a user"
 				}
 			);
 	}    
@@ -106,7 +106,7 @@ export const sendOtp = async(req,res) => {
 
 				//Send SMS
 				const to = user.phoneNumber;
-				const body = `${otp} This is the OTP to login to your Arphibo app`
+				const body = `${otp} Use this OTP to Login`
 				sendSMS(to,body);
 
 				//Send Email
@@ -127,7 +127,7 @@ export const sendOtp = async(req,res) => {
 				res.status(500).send(
 					{
 						"success":"false",
-						"message":e.message
+						"message":"Something went wrong"
 					}
 				);
 			}
@@ -144,7 +144,7 @@ export const sendOtp = async(req,res) => {
 		res.status(500).send(
 			{
 				"success":"false",
-				"message":e.message
+				"message":"Something went wrong"
 			}
 		);	
 	}
@@ -176,10 +176,9 @@ export const userLoginViaOtp = async(req,res) => {
 								"success":"true",
 								"message":"Login Successful",
 								"token":token,
-								"userData":{
-									userName:user.userName,
-									email:user.email
-								}
+								"userName":user.userName,
+								"email":user.email,
+								"profilePicture":user.profilePicture
 							} 
 						);
 					} else {
@@ -243,10 +242,9 @@ export const userLoginViaPassword = async(req,res) => {
 							"success":"true",
 							"message":"Login Successful",
 							"token":token,
-							"userData":{
-								userName:user.userName,
-								email:user.email
-							}
+							"userName":user.userName,
+							"email":user.email,
+							"profilePicture":user.profilePicture
 						}
 					);
 				} else {
@@ -284,24 +282,34 @@ export const userLoginViaPassword = async(req,res) => {
 }
 
 export const changeUserPassword = async(req,res) => {
-	const {password,confirmPassword} = req.body;
-	if (password && confirmPassword) {
-		if (password !== confirmPassword) {
-			res.status(409).send(
+	const {currentPassword,newPassword} = req.body;
+	const userId = req.user._id;
+	const user = await userModel.findById(userId);
+
+	if(!(await bcrypt.compare(currentPassword,user.password))){
+		return res.status(400).send({
+			"success":"false",
+			"message":"Incorrect current password"
+		});
+	}
+
+	if (newPassword && currentPassword) {
+		if(currentPassword === newPassword){
+			return res.status(400).send(
 				{
 					"success":"false",
-					"message":"password and confirmPassword fields don't match..."
+					"message":"You can't use your old password as a new password"
 				}
 			);
 		}else {
 			try {
 				const salt = await bcrypt.genSalt(10);
-				const newHashedPassword = await bcrypt.hash(password,salt);
+				const newHashedPassword = await bcrypt.hash(newPassword,salt);
 				await userModel.findByIdAndUpdate(req.user._id,{$set:{password:newHashedPassword}});
 				res.status(200).send(
 					{
 						"success":"true",
-						"message":"password changed successfully..."
+						"message":"Password changed"
 					}
 				);
 			} catch(e) {   
@@ -317,7 +325,7 @@ export const changeUserPassword = async(req,res) => {
 		res.status(406).send(
 			{
 				"success":"false",
-				"message":"all fields are required..."
+				"message":"All fields are required"
 			}
 		);
 	}
@@ -407,7 +415,7 @@ export const userPasswordReset = async(req,res) => {
 			res.status(406).send(
 				{
 					"success":"false",
-					"message":"Aal fields are required..."
+					"message":"All fields are required"
 				}
 			);
 		}
@@ -439,6 +447,12 @@ export const userLogout = async(req,res) => {
 // Address
 export const fetchAddresses = async(req,res) => {
 	try {
+		if(!req.user){
+			return res.status(400).send({
+				"success":"false",
+				"message":"Login required"
+			});
+		}
 		const userId = req.user._id;
 		const addresses = await addressModel.find({userId:userId});
 		if (addresses.length === 0){
@@ -462,6 +476,12 @@ export const fetchAddresses = async(req,res) => {
 
 export const addAddress = async(req,res) => {
 	try {
+		if(!req.user){
+			return res.status(400).send({
+				"success":"false",
+				"message":"Login Required"
+			});
+		}
 		const userId = req.user._id;
 		const newAddress = new addressModel({
 			userId:userId,
@@ -483,6 +503,7 @@ export const addAddress = async(req,res) => {
 
 export const updateAddress = async(req,res) => {
 	try {
+		
 		const {id} = req.params;
 		const updatedAddress = await addressModel.findByIdAndUpdate(id, { $set: req.body }, { new: true });
 		if(!updatedAddress){

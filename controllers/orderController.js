@@ -1,45 +1,60 @@
 import orderModel from "../models/Order.js";
-import cartModel from "../models/Cart.js";
+import Razorpay from 'razorpay';
 
-export const createOrder = async(req,res) => {
-  try {
-    const userId = req.user._id;
-    const {cartId,shippingAddress} = req.body;
+// Razorpay instance 
+const razorpayInstance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+export const createRazorpayOrder = async(req,res) => {
+
+  try{
+    if(!req.user){
+			return res.status(400).send({
+				"success":"false",
+				"message":"Login Required"
+			});
+		}
+
+    const {cartTotal} = req.body;
     const shippingAmount = 40;
     const taxAmount = 20;
     
-    if(!(cartId && shippingAddress)){
+    if(!cartTotal){
       return res.status(406).send(
 				{ 
 					"success":"false",
-					"message":"cartId and shippingAddress is required"
+					"message":"cartTotal is required to create an Order"
 				} 
 			);
     }
 
-    const cart = await cartModel.findById(cartId);
-    const cartTotal = cart.totalPrice;
-    const totalAmount = cartTotal + shippingAmount + taxAmount;
+    const totalAmount = parseFloat(cartTotal) + parseFloat(shippingAmount) + parseFloat(taxAmount);
 
-    const newOrder = new orderModel({
-      userId:userId,
-      cartId:cartId,
-      shippingAddress:shippingAddress,
-      shippingAmount:shippingAmount,
-      taxAmount:taxAmount,
-      totalAmount:totalAmount
+    const razorpayOrder = await razorpayInstance.orders.create({
+      amount:totalAmount * 100,
+      currency:"INR",
+			receipt:`order_receipt_${Date.now()}`
     });
 
-    const savedOrder = await newOrder.save();
-    res.status(201).send({
+		if(!razorpayOrder){
+			return res.status.send({
+				"success":"false",
+				"message":"Unable to create a Razorpay order"
+			});
+		}
+
+    return res.status(201).send({
       "success":"true",
-      "message":"new order has been created successfully",
-      "newOrder":savedOrder
+      "message":"New Razorpay Order Created",
+      "orderId":razorpayOrder.id,
+      "orderTotal":razorpayOrder.amount
     });
   } catch (e) {
     res.status(500).send({
       "success":"false",
-      "message":e.message
+      "message":"Something went wrong"
     });
   }
 }
