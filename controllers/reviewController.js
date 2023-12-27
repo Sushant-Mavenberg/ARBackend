@@ -60,39 +60,6 @@ export const postReview = async(req,res) => {
     // Save the review to the database
     const savedReview = await newReview.save();
     
-    // const product = await productModel.findById(productId);
-
-    // if (!product) {
-    //   return res.status(404).send({ 
-    //     "success":"false",
-    //     "message":"Product not found"
-    //   });
-    // }
-
-    // // Update the number of ratings
-    // product.numberOfRatings += 1;
-
-    // // Update the number of reviews
-    // product.numberOfReviews = comment ? product.numberOfReviews+1 : product.numberOfReviews;
-
-    // // Update the average rating
-    // product.starNumbers[rating-1] += 1;
-    
-    // let totalRatingsSum = 0;
-    // for (const [index, value] of product.starNumbers.entries()) {
-    //   totalRatingsSum += ((index+1)*value);
-    // }
-    // product.averageRating = totalRatingsSum/product.numberOfRatings;
-    
-    // // Update the star percentages
-    // for (const [index, value] of product.starNumbers.entries()) {
-    //   const starRatio = (value/(product.starNumbers.reduce((accumulator, currentValue) => accumulator + currentValue, 0)));
-    //   const starPercentage = (starRatio * 100).toFixed(2);
-    //   product.starPercentages[index] = starPercentage;
-    // }
-   
-    // await product.save();
-    
     return res.status(201).send({
       "success":"true",
       "message":"Review posted",
