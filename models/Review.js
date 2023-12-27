@@ -21,7 +21,7 @@ const reviewSchema = new mongoose.Schema(
     comment: {
       type: String,
     },
-    archived: {
+    isVerified: {
       type:Boolean,
       default:false
     }

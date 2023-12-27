@@ -503,7 +503,6 @@ export const addAddress = async(req,res) => {
 
 export const updateAddress = async(req,res) => {
 	try {
-		
 		const {id} = req.params;
 		const updatedAddress = await addressModel.findByIdAndUpdate(id, { $set: req.body }, { new: true });
 		if(!updatedAddress){
