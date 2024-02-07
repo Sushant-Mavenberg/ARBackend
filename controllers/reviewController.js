@@ -6,28 +6,28 @@ export const fetchProductReviews = async(req,res) => {
     const {productId }= req.params;
     if (!productId) {
       return res.status(400).send({
-        "success":"false",
+        "success":"true",
         "message":"Product Id is required"
       });
     } 
 
     const reviews = await reviewModel.find({productId:productId, isVerified:true});
     if (reviews.length === 0) {
-      return res.status(404).send({
+      return res.status(200).send({
         "success":"false",
         "message":"Reviews not found"
       });
-    }
+    } 
     return res.status(200).send({
       "success":"true",
       "message":"Reviews fetched",
       "reviews":reviews
-    });
+    }); 
   } catch (e) {
     res.status(500).send({
       "success":"false",
       "message":"Something went wrong"
-    });
+    }); 
   }
 }
 
@@ -42,13 +42,21 @@ export const postReview = async(req,res) => {
     } 
     const userId = req.user._id;
     const {productId,rating,comment} = req.body;
-  
     if (!(productId && rating)) {
       return res.status(400).send({
         "success":"false",
         "message":"Product Id and Rating is required"
-      })
+      });
     } 
+    // Checking if user has alredy rated the product
+    const existingReview = await reviewModel.findOne({productId:productId,userId:userId});
+    console.log(existingReview)
+    if (existingReview){
+      return res.status(200).send({
+        "success":"false",
+        "message":"You have already rated this Product"
+      });
+    }
 
     // Create a new review based on the request body
     const newReview = new reviewModel({
@@ -136,7 +144,7 @@ export const verifyReview = async(req,res) => {
       const starPercentage = (starRatio * 100).toFixed(2);
       product.starPercentages[index] = starPercentage;
     }
-   
+    
     await product.save();
 
     return res.status(200).send({
@@ -145,7 +153,6 @@ export const verifyReview = async(req,res) => {
     });
 
   } catch (e) {
-    console.log(e);
     res.status(500).send({
       "success":"false",
       "message":"Something went wrong"
@@ -196,7 +203,7 @@ export const deleteReview = async(req,res) => {
   }
 }
 
-export const fetchUserRating = async(req,res) => {
+export const fetchUserRating = async(req,res) => { 
   try {
     if(!req.user){
       return res.status(400).send({
@@ -213,8 +220,8 @@ export const fetchUserRating = async(req,res) => {
     }
 
     const userId = req.user._id;
-    const review = await reviewModel.findOne({productId:productId,userId:userId,isVerified:true});
-
+    const review = await reviewModel.findOne({productId:productId,userId:userId});
+    
     if(review){
       const rating = review.rating;
       const dateString = review.createdAt;
@@ -227,10 +234,11 @@ export const fetchUserRating = async(req,res) => {
         hour: 'numeric',
         minute: 'numeric',
         second: 'numeric',
-        timeZone: 'Asia/Kolkata', // Setting time zone to India (IST)
+        timeZone: 'Asia/Kolkata', 
       };
-  
+
       const userReadableFormat = date.toLocaleString('en-IN', options);
+
       return res.status(200).send({
         "success":"true",
         "message":"Rating Fetched",
@@ -238,19 +246,19 @@ export const fetchUserRating = async(req,res) => {
         "date":userReadableFormat
       });
     } else {
-      return res.status(404).send({
-        "success":"false",
+      return res.status(200).send({
+        "success":"true",
         "message":"Rating not found for this product"
       });
-    }
+    } 
   } catch (e) {
-    console.log(e);
     res.status(500).send({
-      "success":"true",
+      "success":"false",
       "message":"Something went wrong"
     });
   }
-}
+} 
+
 // Default export (you can have one default export per module)
 const defaultExport = 'Default export value';
 export default defaultExport;

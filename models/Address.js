@@ -7,6 +7,7 @@ const addressSchema = new mongoose.Schema({
     ref: 'User', // Reference to the User model
     required: true,
   },
+  type: String,
   name:String,
   houseNo:String,
   street: String,
@@ -22,7 +23,7 @@ const addressSchema = new mongoose.Schema({
   default: {
     type:Boolean,
     default:false
-  }
+  } 
 },{timestamps:true});
 
 // Creating a Model

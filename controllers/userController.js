@@ -11,11 +11,9 @@ import addressModel from "../models/Address.js";
 
 dotenv.config();
 
-
 // Azure Storage Blob configuration
 const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.BLOB_STORAGE_CONNECTION_STRING);
 const containerClient = blobServiceClient.getContainerClient(process.env.BLOB_STORAGE_CONTAINER);
-
 
 // User Authentication...
 
@@ -25,9 +23,9 @@ export const userRegistration = async(req,res) => {
   if(userName && email && password && phoneNumber){
 			const user1 = await userModel.findOne({email:email});
 			const user2 = await userModel.findOne({phoneNumber:phoneNumber});
-      if(user1){
+      if(user1){ 
         res.status(409).send(
-          {  
+          {   
 						"success":"false",
             "message":"Email already exists"
           }
@@ -60,7 +58,7 @@ export const userRegistration = async(req,res) => {
 								"success":"true",
 								"message":"User Registered",
 							}
-						)
+						);
 					} catch(e) {
 							res.status(500).send(
 								{
@@ -69,20 +67,20 @@ export const userRegistration = async(req,res) => {
 								}
 							);
 					}
-      }
+      } 
   } else {
 			res.status(406).send(
 				{ 
 					"success":"false",
           "message":"userName, password, email, phoneNumber is required to register a user"
-				}
+				} 
 			);
 	}    
 }
 
 export const sendOtp = async(req,res) => {
 	try {
-		const {phoneNumber} = req.body;
+		const {phoneNumber} = req.body; 
 
 		const secretKey = process.env.OTP_SECRET_KEY;
 
@@ -96,140 +94,146 @@ export const sendOtp = async(req,res) => {
 			const otp = otplib.authenticator.generate(secretKey);
 			return otp;
 		}
-		const user = await userModel.findOne({phoneNumber:phoneNumber});
-		if (user){
-			const otp = generateOTP();
 
-			try {
-				await redisClient.set(user.phoneNumber,otp);
-				redisClient.expire(user.phoneNumber,330);
+		// const user = await userModel.findOne({phoneNumber:phoneNumber});
+		// if (user){
 
-				//Send SMS
-				const to = user.phoneNumber;
-				const body = `${otp} Use this OTP to Login`
-				sendSMS(to,body);
+		const otp = generateOTP();
 
-				//Send Email
-				transporter.sendMail({
-					from:process.env.EMAIL_FROM,
-					to:user.email,
-					subject:"Arphibo - Login OTP",
-					html:`<p>The OTP for login is <strong>${otp}</strong>.</p>
-					<p>*This OTP will expire after 5 minutes!!!</p>`
-				});
-				res.status(200).send(
-					{
-						"success":"true",
-						"message":"OTP sent via SMS and registered Email"
-					}
-				);
-			} catch (e) {
-				res.status(500).send(
-					{
-						"success":"false",
-						"message":"Something went wrong"
-					}
-				);
-			}
+		try {
+			await redisClient.set(phoneNumber,otp);
+			redisClient.expire(phoneNumber,330);
 
-		} else{
-			res.status(404).send(
-				{ 
+			//Send SMS
+			// const to = phoneNumber;
+			// const body = `OTP:${otp}`
+			// sendSMS(to,body);
+
+			//Send Email
+			// transporter.sendMail({
+			// 	from:process.env.EMAIL_FROM,
+			// 	to:user.email,
+			// 	subject:"Arphibo - Login OTP",
+			// 	html:`<p>The OTP for login is <strong>${otp}</strong>.</p>
+			// 	<p>*This OTP will expire after 5 minutes!!!</p>`
+			// });
+
+			res.status(200).send(
+				{
+					"success":"true",
+					"message":"OTP sent"
+				}
+			); 
+		} catch (e) {
+			res.status(500).send(
+				{
 					"success":"false",
-					"message":"This Phone Number is not registered with us"
+					"message":"Error while sending an OTP"
 				}
 			);
 		}
+
+		// } else{
+		// 	res.status(404).send(
+		// 		{ 
+		// 			"success":"false",
+		// 			"message":"This Phone Number is not registered with us"
+		// 		}
+		// 	);
+		// } 
+
 	} catch (e) {
-		res.status(500).send(
+		res.status(500).send( 
 			{
 				"success":"false",
-				"message":"Something went wrong"
-			}
-		);	
-	}
+				"message":"Something went wrong. please, try again later"
+			} 
+		);	 
+	} 
 }
 
 export const userLoginViaOtp = async(req,res) => {
-	try {
+	try { 
 		const {phoneNumber,otp} = req.body;
-		if (!(phoneNumber && otp)) {
+		if (!(phoneNumber && otp)) { 
 			return res.status(400).send({
 				"success":"false",
-				"message":"Plase Provide Phone Number and OTP"
-			})
+				"message":"Please, provide phone number and OTP"
+			});
 		}
 
 		let user;
 		let key;
+
 		user = await userModel.findOne({phoneNumber:phoneNumber});
-		if (user){
-			key = user.phoneNumber;
-			try { 
-				const generatedOtp = await redisClient.get(key);
-				if(generatedOtp){
-					if (generatedOtp === otp) {
-						// Generate JWT token which will expire after 10 days.
-						const token = jwt.sign({userID:user._id},process.env.JWT_SECRET_KEY,{expiresIn:'240h'});
-						res.status(200).send(
-							{
-								"success":"true",
-								"message":"Login Successful",
-								"token":token,
-								"userName":user.userName,
-								"email":user.email,
-								"profilePicture":user.profilePicture
-							} 
-						);
-					} else {
-						res.status(406).send(
-							{
-								"success":"false",
-								"message":"Incorrect OTP"
-							}
-						);
-					} 
-				} else {
+
+		if(!user){
+			const newUser = new userModel({
+				phoneNumber:phoneNumber,
+				email:`${phoneNumber}@nomail.arphibo.com`
+			});
+			await newUser.save();
+			user = newUser;
+		}
+		key = phoneNumber;
+		try { 
+			const generatedOtp = await redisClient.get(key);
+			if(generatedOtp){ 
+				if (generatedOtp === otp) {  
+
+					// Generate JWT token which will expire after 10 days.
+					const token = jwt.sign({userID:user._id},process.env.JWT_SECRET_KEY,{expiresIn:'240h'});
+					res.status(200).send(
+						{ 
+							"success":"true",
+							"message":"Login Successful",
+							"token":token,
+							"firstName":user.firstName,
+							"email":user.email
+						} 
+					);
+				} else {        
 					res.status(406).send(
-						{
+						{ 
 							"success":"false",
-							"message":"Invalid OTP"
+							"message":"Incorrect OTP"
 						}
 					);
-				}
-				
-			} catch (e) {
-				res.status(500).send(
+				} 
+			} else { 
+				res.status(406).send(
 					{
-						"success" : "false",
-						"message" : e.message
+						"success":"false",
+						"message":"Invalid OTP"
 					}
 				);
 			}
-		} else{
-			res.status(404).send(
-				{ 
-					"success":"false",
-					"message":"This Phone Number is not registered with us"
+			
+		} catch (e) { 
+			res.status(500).send(
+				{
+					"success" : "false",
+					"message" : "Something went wrong"
 				}
 			);
 		}
+		
 	} catch (e) {
 		res.status(500).send(
 			{
 				"success" : "false",
-				"message" : e.message
+				"message" : "Something went wrong"
 			}
 		);
 	} 
 } 
 
 export const userLoginViaPassword = async(req,res) => {
-	try {
+	try { 
 		const {email,password} = req.body;
 		if (email && password){
 			const user = await userModel.findOne({email:email});
-			if (user){
+			if (user){ 
 				const isMatch = await bcrypt.compare(password,user.password);
 
 				if (isMatch){
@@ -242,9 +246,9 @@ export const userLoginViaPassword = async(req,res) => {
 							"success":"true",
 							"message":"Login Successful",
 							"token":token,
-							"userName":user.userName,
+							"firstName":user.firstName,
 							"email":user.email,
-							"profilePicture":user.profilePicture
+						
 						}
 					);
 				} else {
@@ -320,7 +324,7 @@ export const changeUserPassword = async(req,res) => {
 					}
 				);
 			}
-		}
+		} 
 	}else {
 		res.status(406).send(
 			{
@@ -337,7 +341,7 @@ export const sendUserPasswordResetEmail = async(req,res) => {
 			const user = await userModel.findOne({email:email});
 			let secret;
 			if (user) {
-				try{
+				try {
 					secret = user._id + process.env.JWT_SECRET_KEY
 					const token = jwt.sign({userID:user._id},secret,{expiresIn:"15m"});
 					const link = `http://127.0.0.1:3000/api/user/reset-password/${user._id}/${token}`;
@@ -442,8 +446,6 @@ export const userLogout = async(req,res) => {
 	);
 }
 
-
-
 // Address
 export const fetchAddresses = async(req,res) => {
 	try {
@@ -505,7 +507,7 @@ export const updateAddress = async(req,res) => {
 	try {
 		const {id} = req.params;
 		const updatedAddress = await addressModel.findByIdAndUpdate(id, { $set: req.body }, { new: true });
-		if(!updatedAddress){
+		if(!updatedAddress){ 
 			return res.status(404).send({
 				"success":"false",
 				"message":"Address not found"
@@ -515,8 +517,8 @@ export const updateAddress = async(req,res) => {
 			"success":"true",
 			"message":"Address updated",
 			"updatedAddress":updatedAddress 
-		}); 
-	} catch (e) {
+		});
+	} catch (e) { 
 		return res.status(500).send({
 			"success":"false",
 			"message":e.message
@@ -525,7 +527,7 @@ export const updateAddress = async(req,res) => {
 }
 
 export const deleteAddress = async(req,res) => {
-	try {
+	try { 
 		const {id} = req.params;
 		await addressModel.findByIdAndDelete(id);
 		return res.status(200).send({
@@ -535,34 +537,17 @@ export const deleteAddress = async(req,res) => {
 	} catch (e) {
 		return res.status(500).send({
 			"success":"false",
-			"message":e.message
+			"message":"Something went wrong"
 		});
 	}
 }
-
 
 // User Profile...
 export const updateUserProfile = async(req,res) => {
 	try {
 		const userId = req.user._id;
-		const updateFields = req.body;
-		const {addresses} = updateFields;
+		const updateFields = req.body;			
 
-		if(addresses){
-			const addresses =  JSON.parse(req.body.addresses);
-			updateFields.addresses = addresses;
-		}
-				
-		if (req.file) {
-			const file = req.file;
-			const blobName = `${userId}-${file.originalname}`;
-			const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-			
-			await blockBlobClient.upload(file.buffer, file.size,{
-				blobHTTPHeaders: { blobContentType: 'application/octet-stream' },
-			});
-			updateFields.profilePicture = blockBlobClient.url;
-	} 
 		// Find the user by ID and update the specified fields
 		const updatedUserProfile = await userModel.findByIdAndUpdate(userId, { $set: updateFields }, { new: true });
 		if (!updatedUserProfile){
@@ -575,17 +560,33 @@ export const updateUserProfile = async(req,res) => {
 		return res.status(200).send({
 			"success":"true",
 			"message":"User profile updated",
-			"updatedUserProfile":await userModel.findById(userId).select("-password -accountStatus -userRole")
+			"updatedUserProfile":await userModel.findById(userId).select("-accountStatus -userRole")
 		});
 
 	} catch (e) {
+		console.log(e);
 		return res.status(500).send({
 			"success":"false",
-			"message":"Internal Server Error"
+			"message": e.message
 		});
 	}
 }
 
+export const getUser = async(req,res) => {
+	try {
+		return res.status(200).send({
+			"success":"true",
+			"message":"user fetched",
+			"user":req.user
+		});
+	} catch (e) {
+		console.log(e);
+		return res.status(500).send({
+			"success":"false",
+			"message": "Error fetching user"
+		});
+	}
+}
 // Default export (you can have one default export per module)
 const defaultExport = 'Default export value';
 export default defaultExport;

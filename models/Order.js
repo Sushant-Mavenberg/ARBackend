@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const orderSchema = new mongoose.Schema({
+const orderSchema = new mongoose.Schema({ 
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User', // Reference to the User model
@@ -19,9 +19,13 @@ const orderSchema = new mongoose.Schema({
       }
     }
   ],
+  orderTotal: { 
+    type: Number,
+    required: true
+  },
   shippingAddress: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Address', // Reference to the Product model
+    ref: 'Address', // Reference to the Address model
     required: true,
   },
   shippingAmount: {
@@ -37,24 +41,19 @@ const orderSchema = new mongoose.Schema({
   },
   orderStatus: {
     type: String,
-    enum: ['pending', 'confirmed','processing','shipped','delivered'],
-    default: 'pending', 
+    enum: ['pending', 'confirmed','processing','shipped','delivered','replaced','cancelled'],
+    default: 'pending',
   },
-  taxAmount: {
-    type: Number,
-    required: true
-  },
-  totalAmount: {
-    type: Number,
-    required: true
-  },
-  paymentMethod: {
-    type: String
+  paymentStatus: {
+    type: String,
+		enum: ['pending', 'paid', 'failed'],
+    default:'pending'
   },
   paymentId: {
-    type: String
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment'
   }
-},{timestamps:true});
+},{timestamps:true}); 
 
 const orderModel = mongoose.model('Order', orderSchema);
 

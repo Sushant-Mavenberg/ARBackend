@@ -13,7 +13,7 @@ const productSchema = new mongoose.Schema({
 	},
 	sku: { 
 		type: String, 
-		required: true, 
+		required: true,
 		unique: true 
 	},
   actualPrice: { 
@@ -46,6 +46,7 @@ const productSchema = new mongoose.Schema({
 		}],
     glbUrl: { type: String },
   },
+	video: String,
 	ar:  { 
 		type: Boolean, 
 		default: false,

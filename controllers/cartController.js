@@ -197,9 +197,8 @@ export const updateCart = async(req,res) => {
       cart.totalItems -= cart.items[itemIndex].quantity;
       cart.totalPrice -= cart.items[itemIndex].price;
       cart.items.splice(itemIndex, 1);
-
-    } else if (action === 'decrease') {
-      // Decrease the quantity
+    } else if (action === 'decrease') { 
+      // Decrease the quantity 
       if (cart.items[itemIndex].quantity > 1) {
         cart.items[itemIndex].quantity -= 1;
         cart.items[itemIndex].price -= product.price;
@@ -220,13 +219,13 @@ export const updateCart = async(req,res) => {
       } else {
         return res.status(400).send({ 
           "sucess":"false",
-          "message": "product out of stock..." 
+          "message": "Product out of stock" 
         });
-      }
+      } 
     } else {
       return res.status(400).send({ 
         "sucess":"false",
-        "message": "invalid action..." 
+        "message": "Invalid action" 
       });
     }
 
@@ -235,7 +234,7 @@ export const updateCart = async(req,res) => {
 
     res.status(200).send({
       "success":"true",
-      "message":"cart updated successfully...",
+      "message":"Cart updated",
       "updatedCart":updatedCart
     });
     
@@ -253,14 +252,14 @@ export const deleteCart = async(req,res) => {
   if (!cartId) { 
     res.status(400).send({
       "success":"false",
-      "message":"please provide cartId..."
-    })
-  }
+      "message":"please provide cartId"
+    });
+  }          
   const cart = await cartModel.findOne({_id:cartId,userId:userId,isActive:true});
   if(!cart){
     return res.status(404).send({ 
       "success":"false",
-      "message": "cart doesn't exist..." 
+      "message": "cart doesn't exist" 
     });
   }
 
@@ -268,10 +267,9 @@ export const deleteCart = async(req,res) => {
   await cart.save();
   res.status(200).send({
     "success": "true",
-    "message": "cart deleted successfully..."
+    "message": "Cart deleted"
   }); 
 }
-
 
 // Default export (you can have one default export per module)
 const defaultExport = 'Default export value';

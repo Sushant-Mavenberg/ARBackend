@@ -38,15 +38,16 @@ export const uploadProduct = async(req,res) => {
 	const userRole = req.user.userRole;
 	if (userRole === 'admin' || userRole === 'super-admin') {
 		const {name, actualPrice,category,sku,quantity,description} = req.body;
+	
 		const jpegImages = req.files['jpegImages'];
-		if (name && actualPrice && category && sku && quantity && description && jpegImages) {
+		if (name && actualPrice && category && sku && quantity && description && jpegImages) { 
 			const product = await productModel.findOne({sku:sku});
 			if(product) {
 				res.status(409).send({ 
 					"success":"false",
 					"message":"SKU already exists"
 				});
-			} else {
+			} else { 
 				try{
 					// Process uploaded .jpeg images
 					const jpegUrls = [];
@@ -82,6 +83,19 @@ export const uploadProduct = async(req,res) => {
 						ar = true;
 					}
 
+					// Uploading the video 
+					let videoUrl = null;
+					if (req.files['video']) {
+						const file = req.files['video'][0];
+						const blobName = `${Date.now()}-${file.originalname}`;
+						const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+						
+						await blockBlobClient.upload(file.buffer, file.size,{
+							blobHTTPHeaders: { blobContentType: 'application/octet-stream' },
+						});
+						videoUrl = blockBlobClient.url;
+					}
+
 					// Calculating finalPrice based on discountPercentage
 					let discountPercentage;
 					let {finalPrice} = req.body;
@@ -92,9 +106,10 @@ export const uploadProduct = async(req,res) => {
 					}
 
 					// process itemDimensions,features from req body
-					const requirements = JSON.parse(req.body.requirements);
-					const itemDimensions = JSON.parse(req.body.itemDimensions);
-					const features = JSON.parse(req.body.features);
+					let requirements,itemDimensions,features
+					requirements = JSON.parse(req.body.requirements);
+					itemDimensions = JSON.parse(req.body.itemDimensions);
+					features = JSON.parse(req.body.features);
 					
 					// Create a new product with the received data and the Azure Blob Storage URLs
 					const productData = {
@@ -102,6 +117,7 @@ export const uploadProduct = async(req,res) => {
 						discountPercentage:discountPercentage,
 						finalPrice:finalPrice,
 						ar:ar,
+						video:videoUrl,
 						requirements:requirements,
 						itemDimensions:itemDimensions,
 						features:features,
@@ -110,7 +126,7 @@ export const uploadProduct = async(req,res) => {
 							glbUrl: glbUrl,
 						}
 					};
-
+					
 					const newProduct = new productModel(productData);
 					const savedProduct = await newProduct.save();
 					res.status(201).send({
@@ -119,6 +135,7 @@ export const uploadProduct = async(req,res) => {
 						"product": savedProduct
 					});
 				} catch(e) {
+					console.log(e);
 					res.status(500).send(
 						{
 							"success":"false",
@@ -133,7 +150,7 @@ export const uploadProduct = async(req,res) => {
 				"success":"false",
 				"message":"name,price,category,sku, quantity,description and jpegImages these fields are required"
 			});
-		}
+		} 
 	} else {
 			res.status(401).send({
 				"success":"false",
@@ -173,12 +190,63 @@ export const updateProduct = async(req,res) => {
 			"success":"false",
 			"message":"Login Required"
 		});
-	}
+	} 
 	const userRole = req.user.userRole;
 	if (userRole === 'admin' || userRole === 'super-admin') {
 		try {
-			let updateFields = req.body;
 			const productId = req.params.id;
+			const updateFields = req.body;
+			const product = await productModel.findById(productId);
+
+			// Process uploaded .jpeg images
+			const jpegUrls = [];
+			if (req.files['jpegImages']) { 
+				const promisesJpeg = req.files['jpegImages'].map(async (file) => {
+					const blobName = `${Date.now()}-${file.originalname}`;
+					const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+					await blockBlobClient.upload(file.buffer, file.size,{
+						blobHTTPHeaders: { blobContentType: 'application/octet-stream' },
+					});
+					const imageUrl = blockBlobClient.url;
+					jpegUrls.push(imageUrl);
+				}); 
+				await Promise.all(promisesJpeg);
+				product.images.jpegUrls = jpegUrls;
+				await product.save();
+			}
+
+			// Process uploaded .glb image
+			let glbUrl = null;
+			if (req.files['glbImage']) { 
+					const file = req.files['glbImage'][0];
+					const blobName = `${Date.now()}-${file.originalname}`;
+					const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+					
+					await blockBlobClient.upload(file.buffer, file.size,{
+						blobHTTPHeaders: { blobContentType: 'application/octet-stream' },
+					});
+					const imageUrl = blockBlobClient.url;
+					glbUrl = imageUrl;
+					product.images.glbUrl = glbUrl;
+					product.ar = true;
+					await product.save();
+			}
+
+			// Uploading the video 
+			let videoUrl = null;
+			if (req.files['video']) {
+				const file = req.files['video'][0];
+				const blobName = `${Date.now()}-${file.originalname}`;
+				const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+				
+				await blockBlobClient.upload(file.buffer, file.size,{
+					blobHTTPHeaders: { blobContentType: 'application/octet-stream' },
+				});
+				videoUrl = blockBlobClient.url;
+				product.video = videoUrl;
+				await product.save();
+			}
+
 			const updatedProduct = await productModel.findByIdAndUpdate(
 				productId,
 				{ $set: updateFields },
@@ -208,6 +276,19 @@ export const updateProduct = async(req,res) => {
 			"message":"Unauthorized User"
 		});
 	}
+}
+
+export const getImages = async(req,res) => {
+	const products = await productModel.find({ar:true});
+	const images = []
+	products.forEach((product) => {
+		images.push(product.images);
+	});
+	res.status(200).send({
+		"success":"true",
+		"message":"Product images fetched",
+		"images":images
+	});
 }
 
 // Default export (you can have one default export per module)

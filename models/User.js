@@ -2,31 +2,40 @@ import mongoose from "mongoose";
 
 // Defining Schema
 const userSchema = new mongoose.Schema({
-	userName: String,
+
   firstName: String,
   lastName: String,
   email: {
     type: String,
-    required: true,
     unique: true,
   },
-  password: {
+
+  phoneNumber: {
     type: String,
-    required: true,
+    unique: true,
   },
-  phoneNumber: String,
+
   accountStatus: {
     type: String,
     enum: ['active', 'disabled'],
     default: 'active',
   },
+
   userRole: {
     type: String,
     enum: ['customer', 'admin','super-admin'],
     default: 'customer',
   },
-  profilePicture: String,
+
   dateOfBirth: Date,
+  gender:{
+    type: String,
+    enum: ['male', 'female','other']
+  },
+
+  loyaltyPoints:Number,
+  amountSpent:Number,
+  referrals:Number,
   joinDate: {
     type: Date,
     default: Date.now,

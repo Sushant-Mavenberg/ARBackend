@@ -1,58 +1,104 @@
 import orderModel from "../models/Order.js";
-import Razorpay from 'razorpay';
 
-// Razorpay instance 
-const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
-export const createRazorpayOrder = async(req,res) => {
-
-  try{
+export const fetchOrders = async(req,res) => {
+  try {
     if(!req.user){
-			return res.status(400).send({
-				"success":"false",
-				"message":"Login Required"
-			});
-		}
-
-    const {cartTotal} = req.body;
-    const shippingAmount = 40;
-    const taxAmount = 20;
-    
-    if(!cartTotal){
-      return res.status(406).send(
-				{ 
-					"success":"false",
-					"message":"cartTotal is required to create an Order"
-				} 
-			);
+      return res.status(400).send({
+        "success":"false",
+        "message":"Login Required"
+      });
+    } 
+  
+    const userRole = req.user.userRole;
+    if (!(userRole === 'admin' || userRole === 'super-admin')){
+      return res.status(401).send({
+        "success":"false",
+        "message":"Not Authorized"
+      });
     }
-
-    const totalAmount = parseFloat(cartTotal) + parseFloat(shippingAmount) + parseFloat(taxAmount);
-
-    const razorpayOrder = await razorpayInstance.orders.create({
-      amount:totalAmount * 100,
-      currency:"INR",
-			receipt:`order_receipt_${Date.now()}`
-    });
-
-		if(!razorpayOrder){
-			return res.status.send({
-				"success":"false",
-				"message":"Unable to create a Razorpay order"
-			});
-		}
-
-    return res.status(201).send({
+  
+    const orders = await orderModel.find({});
+  
+    return res.status(200).send({
       "success":"true",
-      "message":"New Razorpay Order Created",
-      "orderId":razorpayOrder.id,
-      "orderTotal":razorpayOrder.amount
+      "message":"Orders fetched",
+      "orders":orders
     });
   } catch (e) {
-    res.status(500).send({
+    return res.status(500).send({
+      "success":"false",
+      "message":"Something went wrong"
+    });
+  }
+}
+
+export const createOrder = async(req,res) => {
+  try {
+    if(!req.user){
+      return res.status(400).send({
+        "success":"false",
+        "message":"Login Required"
+      });
+    } 
+    const userId = req.user._id 
+    const newOrder = new orderModel({
+      userId:userId,
+      ...req.body
+    });
+    await newOrder.save();
+    console.log({newOrder:newOrder});
+    return res.status(201).send({
+      "success":"true",
+      "message":"Order placed",
+      "orderId":newOrder.id
+    });
+  } catch (e) {
+    return res.status(500).send({
+      "success":"false",
+      "message":"Something went wrong"
+    });
+  }
+}
+
+export const updateOrderStatus = async(req,res) => {
+  try {
+    if(!req.user){
+      return res.status(400).send({
+        "success":"false",
+        "message":"Login Required"
+      });
+    } 
+  
+    const userRole = req.user.userRole;
+    if (!(userRole === 'admin' || userRole === 'super-admin')){
+      return res.status(401).send({
+        "success":"false",
+        "message":"Not Authorized"
+      });
+    }
+
+    const {status} = req.body
+    const orderId = req.params
+    if(!(status && orderId)){
+      return res.status(400).send({
+        "success":"false",
+        "message":"Updated status and order Id  required"
+      });
+    }
+
+    const updatedOrder = await orderModel.findByIdAndUpdate(
+      orderId,
+      { $set: status },
+      { new: true, runValidators: true }
+    );
+
+    return res.status(200).send({
+      "success":"true",
+      "message":"Order Status Updated",
+      "updatedOrder":updatedOrder
+    });
+  } catch (e) {
+    return res.status(500).send({
       "success":"false",
       "message":"Something went wrong"
     });
